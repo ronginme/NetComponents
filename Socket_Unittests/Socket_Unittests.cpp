@@ -88,3 +88,54 @@ TEST(SocketClassTests, SendRecvTest) {
   EXPECT_TRUE(srvData.compare(srvRecvData) == 0);
   EXPECT_EQ(srvData.length(), srvDataLen);
 }
+
+TEST(SocketClassTests, ManyClientsOpenTest) {
+  TCPSocketSrv srv;
+  auto sOpened = srv.Open(9999);
+  EXPECT_TRUE(sOpened);
+
+  TCPSocketClt clts[FD_SETSIZE];
+  for (auto clt : clts)
+  {
+    auto cOpened = clt.Open(9999);
+    EXPECT_TRUE(cOpened);
+  }
+}
+
+TEST(SocketClassTests, ManyClientsSendAndRecvTest) {
+  TCPSocketSrv srv;
+  auto sOpened = srv.Open(9999);
+  EXPECT_TRUE(sOpened);
+
+  TCPSocketClt clts[FD_SETSIZE-1];
+  SOCKET cSocks[FD_SETSIZE-1];
+
+  std::string cData = "Hello from client ";
+  for (auto i = 0; i < FD_SETSIZE-1; ++i)
+  {
+    TCPSocketClt &clt = clts[i];
+    auto cOpened = clt.Open(9999);
+    EXPECT_TRUE(cOpened);
+
+    auto cSended = clt.Send(cData.c_str(), cData.length());
+    EXPECT_EQ(cData.length(), cSended);
+
+    size_t recvDataLen;
+    auto srvRecvData = srv.Recv(cSocks[i], recvDataLen);
+    EXPECT_TRUE(cData.compare(srvRecvData) == 0);
+    EXPECT_EQ(cData.length(), recvDataLen);
+  }
+
+  std::string sData = "Hello from server";
+  for (auto i = 0; i < FD_SETSIZE - 1; ++i)
+  {
+    auto sSended = srv.Send(cSocks[i], sData.c_str(), sData.length());
+    EXPECT_EQ(sData.length(), sSended);
+
+    SOCKET sSock;
+    size_t recvDataLen;
+    auto cltRecvData = clts[i].Recv(sSock, recvDataLen);
+    EXPECT_TRUE(sData.compare(cltRecvData) == 0);
+    EXPECT_EQ(sData.length(), recvDataLen);
+  }
+}

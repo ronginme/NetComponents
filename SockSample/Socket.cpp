@@ -88,6 +88,7 @@ const char * TCPSocketSrv::Recv(SOCKET & srcSock, size_t & dataLen)
   dataLen = 0;
   srcSock = INVALID_SOCKET;
 
+  Sleep(1);
   while (auto sock = accept(sock_, NULL, NULL))
   {
     if (sock == INVALID_SOCKET)
@@ -175,6 +176,7 @@ const char * TCPSocketClt::Recv(SOCKET & srcSock, size_t & dataLen)
   dataLen = 0;
   srcSock = INVALID_SOCKET;
 
+  Sleep(1);
   while (auto sock = accept(sock_, NULL, NULL))
   {
     if (sock == INVALID_SOCKET)
@@ -203,26 +205,4 @@ const char * TCPSocketClt::Recv(SOCKET & srcSock, size_t & dataLen)
       }
     }
   return recvBuff_;
-
-  //memset((void*)&recvBuff_[0], 0, SO_MAX_MSG_SIZE);
-  //dataLen = 0;
-  //srcSock = INVALID_SOCKET;
-
-  //timeval tim;
-  //tim.tv_sec = 1;
-  //auto sockCount = select(0, &s_read_, NULL, NULL, &tim);
-  //if (sockCount <= 0)
-  //  return recvBuff_;
-
-  //auto recvBytes = recv(sock_, &recvBuff_[0], SO_MAX_MSG_SIZE, MSG_PEEK);
-  //if (recvBytes)
-  //{
-  //  memset((void*)&recvBuff_[0], 0, SO_MAX_MSG_SIZE);
-  //  recv(sock_, &recvBuff_[0], recvBytes, 0);
-  //  srcSock = sock_;
-  //  dataLen = recvBytes;
-  //  return recvBuff_;
-
-  //}
-  //return recvBuff_;
 }
