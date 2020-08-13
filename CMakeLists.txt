@@ -18,8 +18,12 @@ include_directories(${GTEST_INCLUDE_DIRS})
 endif()
 
 if (WIN32)
-   set(CMAKE_CXX_FLAGS_RELEASE "/MT")
-   set(CMAKE_CXX_FLAGS_DEBUG "/MTd")
+   set(CMAKE_CXX_FLAGS_RELEASE "/MD")
+   set(CMAKE_CXX_FLAGS_DEBUG "/MDd")
+   add_definitions(-D_ITERATOR_DEBUG_LEVEL=2)
+   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SAFESEH:NO")
+   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SAFESEH:NO")
+   set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /SAFESEH:NO")
 
    #SocketLib
    add_library(socklib STATIC SockSample/BytesData.cpp SockSample/Socket_win.cpp)
@@ -27,10 +31,10 @@ if (WIN32)
 
    if(WITH_UNITTEST)
       # UnitTests
+      include_directories(SockSample)
       add_executable(Socket_unittests Socket_Unittests/Socket_Unittests.cpp)
       target_compile_definitions(Socket_unittests PUBLIC WIN32)
-      target_link_libraries(Socket_unittests socklib)
-      target_link_libraries(Socket_unittests ${GTEST_LIBRARIES})
+      target_link_libraries(Socket_unittests socklib ${GTEST_LIBRARIES})
    endif()
 
 elseif (UNIX)

@@ -3,39 +3,53 @@
 
 #include "Socket.h"
 
-#include <process.h>
 #include <windows.h>
 #include <winsock2.h>
-#include <processthreadsapi.h>
 
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
+
+size_t SocketBase::GetConnectedSocketsCount() const
+{
+  return s_read_.fd_count; 
+}
+
+size_t SocketBase::GetMaxAvailableSockets() const
+{
+  return FD_SETSIZE;
+}
 
 int SocketBase::SendData(SOCKET destSock, const char * data, size_t dataLen)
 {
   return send(destSock, data, dataLen, 0);
 }
 
-fd_set SocketBase::GetAcceptedSockets(SOCKET sock)
+void SocketBase::GetAcceptedSocketsThread()
 {
-  while (auto acceptedSock = accept(sock, NULL, NULL))
+  while (!this->_isClosed)
   {
+    auto acceptedSock = accept(this->sock_, NULL, NULL);
     if (acceptedSock == INVALID_SOCKET)
-      break;
+    {
+      continue;
+    }
+
     FD_SET(acceptedSock, &s_read_);
+    std::this_thread::yield();
   }
-  return s_read_;
 }
 
 SocketBase::SocketBase()
 {
+  _isClosed = false;
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 }
 
 SocketBase::~SocketBase()
 {
+  _isClosed = true;
   WSACleanup();
 }
 
@@ -44,24 +58,27 @@ std::map<SOCKET, BytesData> SocketBase::Recv()
   std::map<SOCKET, BytesData> recvData;
   char recvBuff[SO_MAX_MSG_SIZE];
 
-  Sleep(1);
-  fd_set fdset = GetAcceptedSockets(sock_);
-
-  auto sockCount = select(0, &fdset, NULL, NULL, NULL);
-  if (sockCount <= 0)
+  // Sleep(1);
+  fd_set fdset = s_read_;
+  TIMEVAL tval; 
+  tval.tv_usec = 1000;
+  auto sockCount = select(0, &fdset, NULL, NULL, &tval);
+  if (sockCount == 0 || sockCount == SOCKET_ERROR)
+  {
     return recvData;
+  }
 
-  for (auto sock : fdset.fd_array)
-    if (FD_ISSET(sock, &fdset))
-    {
-      auto recvBytes = recv(sock, &recvBuff[0], SO_MAX_MSG_SIZE, MSG_PEEK);
-      if (recvBytes <= 0)
-        return recvData;
+  // for (auto sock : fdset.fd_array)
+  //   if (FD_ISSET(sock, &fdset))
+  //   {
+  //     auto recvBytes = recv(sock, &recvBuff[0], SO_MAX_MSG_SIZE, MSG_PEEK);
+  //     if (recvBytes <= 0)
+  //       return recvData;
 
-      memset((void*)&recvBuff[0], 0, SO_MAX_MSG_SIZE);
-      recv(sock, &recvBuff[0], recvBytes, 0);
-      recvData.emplace(sock, BytesData(recvBuff, recvBytes));
-    }
+  //     memset((void*)&recvBuff[0], 0, SO_MAX_MSG_SIZE);
+  //     recv(sock, &recvBuff[0], recvBytes, 0);
+  //     recvData.emplace(sock, BytesData(recvBuff, recvBytes));
+  //   }
   return recvData;
 }
 
@@ -113,6 +130,7 @@ bool TCPSocketSrv::Open(unsigned short port, const char* ip)
   FD_ZERO(&s_read_);
   FD_SET(sock_, &s_read_);
 
+  _acceptThread = new std::thread(&TCPSocketSrv::GetAcceptedSocketsThread, this);
   return true;
 }
 
@@ -164,6 +182,7 @@ bool TCPSocketClt::Open(unsigned short port, const char* ip)
   FD_ZERO(&s_read_);
   FD_SET(sock_, &s_read_);
   freeaddrinfo(resultAddr);
+  _acceptThread = new std::thread(&TCPSocketClt::GetAcceptedSocketsThread, this);
   return true;
 }
 
