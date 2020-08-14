@@ -10,8 +10,13 @@
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-size_t SocketBase::GetConnectedSocketsCount() const
+size_t SocketBase::GetConnectedSockets(std::forward_list<SOCKET> & sockets) const
 {
+  for(auto s : s_read_.fd_array)
+  {
+    sockets.emplace_front(s);
+  }
+
   return s_read_.fd_count; 
 }
 
@@ -68,17 +73,19 @@ std::map<SOCKET, BytesData> SocketBase::Recv()
     return recvData;
   }
 
-  // for (auto sock : fdset.fd_array)
-  //   if (FD_ISSET(sock, &fdset))
-  //   {
-  //     auto recvBytes = recv(sock, &recvBuff[0], SO_MAX_MSG_SIZE, MSG_PEEK);
-  //     if (recvBytes <= 0)
-  //       return recvData;
+  for (auto sock : fdset.fd_array)
+  {
+    if (FD_ISSET(sock, &fdset))
+    {
+      auto recvBytes = recv(sock, &recvBuff[0], SO_MAX_MSG_SIZE, MSG_PEEK);
+      if (recvBytes <= 0)
+        return recvData;
 
-  //     memset((void*)&recvBuff[0], 0, SO_MAX_MSG_SIZE);
-  //     recv(sock, &recvBuff[0], recvBytes, 0);
-  //     recvData.emplace(sock, BytesData(recvBuff, recvBytes));
-  //   }
+      memset((void*)&recvBuff[0], 0, SO_MAX_MSG_SIZE);
+      recv(sock, &recvBuff[0], recvBytes, 0);
+      recvData.emplace(sock, BytesData(recvBuff, recvBytes));
+    }
+  }
   return recvData;
 }
 
