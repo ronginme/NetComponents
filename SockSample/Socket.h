@@ -21,7 +21,6 @@ protected:
 #endif
   SOCKET sock_;
   fd_set s_read_;
-  bool _isClosed;
   int SendData(SOCKET destSock, const char *data, size_t dataLen);
   fd_set GetAcceptedSockets(SOCKET sock);
 public:
@@ -30,7 +29,7 @@ public:
   virtual bool Open(unsigned short port, const char *ip = NULL) = 0;
   virtual std::map<SOCKET, BytesData> Recv();
   virtual void Close();
-  size_t GetConnectedSockets(std::forward_list<SOCKET> & sockets) const;
+  size_t GetConnectedSockets(std::forward_list<SOCKET> & sockets);
   size_t GetMaxAvailableSockets() const;
 };
 

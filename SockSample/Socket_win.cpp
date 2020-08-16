@@ -10,8 +10,10 @@
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
 
-size_t SocketBase::GetConnectedSockets(std::forward_list<SOCKET> & sockets) const
+size_t SocketBase::GetConnectedSockets(std::forward_list<SOCKET> & sockets)
 {
+  GetAcceptedSockets(this->sock_);
+
   for(auto s : s_read_.fd_array)
   {
     sockets.emplace_front(s);
@@ -47,14 +49,12 @@ int SocketBase::SendData(SOCKET destSock, const char * data, size_t dataLen)
 
 SocketBase::SocketBase()
 {
-  _isClosed = false;
   WSADATA wsaData;
   WSAStartup(MAKEWORD(2, 2), &wsaData);
 }
 
 SocketBase::~SocketBase()
 {
-  _isClosed = true;
   WSACleanup();
 }
 
