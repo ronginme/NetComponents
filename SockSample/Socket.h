@@ -8,7 +8,6 @@
 
 #if defined(WIN32)
 #include <WS2tcpip.h>
-#include <thread>
 #elif defined(LINUX)
 #include <sys/socket.h>
 #define SOCKET int
@@ -22,10 +21,9 @@ protected:
 #endif
   SOCKET sock_;
   fd_set s_read_;
-  int SendData(SOCKET destSock, const char *data, size_t dataLen);
-  void GetAcceptedSocketsThread();
   bool _isClosed;
-  std::thread* _acceptThread = nullptr;
+  int SendData(SOCKET destSock, const char *data, size_t dataLen);
+  fd_set GetAcceptedSockets(SOCKET sock);
 public:
   SocketBase();
   virtual ~SocketBase();

@@ -25,24 +25,24 @@ size_t SocketBase::GetMaxAvailableSockets() const
   return FD_SETSIZE;
 }
 
-int SocketBase::SendData(SOCKET destSock, const char * data, size_t dataLen)
+fd_set SocketBase::GetAcceptedSockets(SOCKET sock)
 {
-  return send(destSock, data, dataLen, 0);
-}
-
-void SocketBase::GetAcceptedSocketsThread()
-{
-  while (!this->_isClosed)
+  while (auto acceptedSock = accept(sock, NULL, NULL))
   {
-    auto acceptedSock = accept(this->sock_, NULL, NULL);
     if (acceptedSock == INVALID_SOCKET)
     {
-      continue;
+        break;
     }
-
     FD_SET(acceptedSock, &s_read_);
-    std::this_thread::yield();
   }
+  return s_read_;
+}
+
+int SocketBase::SendData(SOCKET destSock, const char * data, size_t dataLen)
+{
+  auto acceptedSock = accept(this->sock_, NULL, NULL);
+
+  return send(destSock, data, dataLen, 0);
 }
 
 SocketBase::SocketBase()
@@ -63,8 +63,7 @@ std::map<SOCKET, BytesData> SocketBase::Recv()
   std::map<SOCKET, BytesData> recvData;
   char recvBuff[SO_MAX_MSG_SIZE];
 
-  // Sleep(1);
-  fd_set fdset = s_read_;
+  fd_set fdset = GetAcceptedSockets(sock_);
   TIMEVAL tval; 
   tval.tv_usec = 1000;
   auto sockCount = select(0, &fdset, NULL, NULL, &tval);
@@ -137,7 +136,6 @@ bool TCPSocketSrv::Open(unsigned short port, const char* ip)
   FD_ZERO(&s_read_);
   FD_SET(sock_, &s_read_);
 
-  _acceptThread = new std::thread(&TCPSocketSrv::GetAcceptedSocketsThread, this);
   return true;
 }
 
@@ -189,7 +187,6 @@ bool TCPSocketClt::Open(unsigned short port, const char* ip)
   FD_ZERO(&s_read_);
   FD_SET(sock_, &s_read_);
   freeaddrinfo(resultAddr);
-  _acceptThread = new std::thread(&TCPSocketClt::GetAcceptedSocketsThread, this);
   return true;
 }
 
