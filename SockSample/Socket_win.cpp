@@ -149,13 +149,6 @@ bool TCPSocketSrv::Open(unsigned short port, const char* ip)
   port_ = ntohs(sin.sin_port);
   host_ = sin.sin_addr.s_addr;
 
-    FILE * file = fopen(R"(C:\Users\Public\Documents\_+_.txt)", "a+");
-    if(file != NULL)
-    {
-      fprintf(file, "-- %d %d\n",port_, host_);
-     fclose(file); 
-    }
-
   freeaddrinfo(resultAddr);
 
   FD_ZERO(&s_read_);
